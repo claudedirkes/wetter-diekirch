@@ -227,7 +227,7 @@
     Temperaturen dieser Jahre (v. a. 2015) sind unsicher. Niederschlag ist der verlässlichere Messwert.<br>
     <b>Messwerte Ettelbruck/Bettendorf:</b> AgriMeteo Luxembourg (Ministère de l'Agriculture, CC0,
     <a href="https://www.agrimeteo.lu" target="_blank" rel="noopener">agrimeteo.lu</a>) – 10-Minuten-Werte, alle 30 min abgerufen; Tageswerte Ettelbruck ab 2004.
-    <b>Findel:</b> MeteoLux (ANA, CC0), Minutenwerte live.<br>
+<br>
     <b>Vorhersage und Modell-Rückblick:</b> <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (Wettermodelle bzw. ERA5-Reanalyse, CC BY 4.0)
     für 49,868° N, 6,159° O – Modellwerte, keine Messung; lokale Schauer können abweichen.
   </p>
@@ -690,17 +690,6 @@ async function loadLive() {
       ['Regen heute', nf(regenHeute, 1) + ' mm'], ['heute', `${nf(Math.min(...tagesW), 1)} / ${nf(Math.max(...tagesW), 1)} °C`]
     ] : [], last ? new Date(last.zeit) : null, 'AgriMeteo, 10-min-Werte'));
     serie[name] = w;
-  }
-  // MeteoLux Findel (live, direkt abgefragt)
-  try {
-    const j = await getJSON('https://metapi.ana.lu/api/v1/hvd/observations');
-    const v = Object.fromEntries(j.data.map(x => [x.id, x.value]));
-    tiles.push(stTile('Findel (Flughafen)', 'ca. 27 km', v.st, [
-      ['Feuchte', nf(v.su, 0) + ' %'], ['Wind', nf(v.s2ff_rwymd0 * 3.6, 0) + ' km/h'],
-      ['Böen', nf(v.s2ffgust_rwymd0 * 3.6, 0) + ' km/h'], ['Luftdruck', nf(v.spsl, 0) + ' hPa']
-    ], new Date(j.timestamp), 'MeteoLux, live'));
-  } catch (e) {
-    tiles.push(stTile('Findel (Flughafen)', 'ca. 27 km', null, [], null, 'MeteoLux – nicht erreichbar'));
   }
   $('live').innerHTML = tiles.join('');
   // Verlauf der letzten 24 h (gemeinsame Zeitachse aus Ettelbruck)
