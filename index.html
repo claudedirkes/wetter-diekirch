@@ -97,6 +97,19 @@
   .st .row b{color:var(--ink);font-weight:600}
   .st .age{font-size:12px;color:var(--muted);margin-top:6px}
   .st .age.old{color:var(--error)}
+  .hours{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+  .hours .track{position:relative}
+  .hours svg{display:block}
+  .hours .cols{display:flex}
+  .hours .col{width:var(--w);flex:0 0 var(--w);text-align:center;font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+  .hours .col.dsep{border-left:1px solid var(--axis)}
+  .hours .dname{height:16px;font-weight:600;color:var(--ink);white-space:nowrap;text-align:left;padding-left:4px;font-size:12px}
+  .hours .time{font-weight:600;color:var(--ink);font-size:13px}
+  .hours .ico{font-size:20px;height:28px;line-height:28px}
+  .hours .rainbox{height:44px;display:flex;align-items:flex-end;justify-content:center}
+  .hours .rainbar{width:60%;background:var(--rain);border-radius:3px 3px 0 0;min-height:0}
+  .hours .mm{height:16px;color:var(--rain);font-weight:600}
+  .hours .pp{height:16px;color:var(--muted)}
   .hidden{display:none!important}
   @media (max-width:640px){ .now{grid-template-columns:1fr} .now .big{font-size:44px} .chartbox{height:210px} }
 </style>
@@ -125,9 +138,10 @@
   </div>
 
   <!-- 48 h -->
-  <div class="charts2 section">
-    <div class="card"><h2>Temperatur – nächste 48 Stunden (°C)</h2><div class="chartbox"><canvas id="c48T"></canvas></div></div>
-    <div class="card"><h2>Niederschlag – nächste 48 Stunden (mm/h)</h2><div class="chartbox"><canvas id="c48R"></canvas></div></div>
+  <div class="card section">
+    <h2>Nächste 48 Stunden</h2>
+    <p class="hint">Zur Seite wischen für spätere Stunden. Blau = Niederschlag in mm pro Stunde, darunter die Regenwahrscheinlichkeit.</p>
+    <div class="hours" id="hours"></div>
   </div>
 
   <div class="card section" id="liveCard">
@@ -304,11 +318,7 @@ async function loadForecast() {
   let i0 = h.time.findIndex(t => t.slice(0, 13) === nowKey);
   if (i0 < 0) i0 = 0;
   const idx = [...Array(48).keys()].map(k => i0 + k).filter(i => i < h.time.length);
-  const labels = idx.map(i => TAGE[new Date(h.time[i]).getDay()] + ' ' + h.time[i].slice(11, 16));
-  drawChart('c48T', 'line', labels, [{ data: idx.map(i => h.temperature_2m[i]), color: css('--warm') }], '°C',
-    k => [wIcon(h.weather_code[idx[k]]) + ' ' + wText(h.weather_code[idx[k]])]);
-  drawChart('c48R', 'bar', labels, [{ data: idx.map(i => h.precipitation[i]), color: css('--rain') }], 'mm',
-    k => [`Regenwahrscheinlichkeit: ${nf(h.precipitation_probability[idx[k]], 0)} %`], { suggestedMax: 1 });
+  renderHours(h, idx);
 
   // 7 Tage
   $('days').innerHTML = d0.time.map((t, i) => {
@@ -599,6 +609,41 @@ $('mLoad').addEventListener('click', async () => {
     m.textContent = 'Fehler: ' + e.message; m.className = 'msg err';
   } finally { $('mLoad').disabled = false; }
 });
+
+// ── Stundenleiste: eine Spalte pro Stunde, Temperaturkurve darüber ──
+function renderHours(h, idx) {
+  const W = 52, H = 96, pad = 22;
+  const temps = idx.map(i => h.temperature_2m[i]);
+  const tMin = Math.min(...temps), tMax = Math.max(...temps), span = Math.max(tMax - tMin, 1);
+  const y = t => pad + (H - 2 * pad) * (1 - (t - tMin) / span);
+  const pts = temps.map((t, k) => [k * W + W / 2, y(t)]);
+  const heute = idx.length ? h.time[idx[0]].slice(0, 10) : '';
+  const morgen = addDays(heute, 1);
+  const tagName = d => d === heute ? 'Heute' : d === morgen ? 'Morgen' : TAGE[new Date(d + 'T12:00:00').getDay()] + ' ' + d.slice(8, 10) + '.' + d.slice(5, 7) + '.';
+  const rMax = Math.max(1, ...idx.map(i => h.precipitation[i] || 0));
+  const warm = css('--warm'), ink = css('--ink'), grid = css('--grid'), axis = css('--axis');
+  // Linien beim Tageswechsel im SVG
+  const trenn = idx.map((i, k) => k > 0 && h.time[i].slice(11, 13) === '00' ? `<line x1="${k * W}" y1="0" x2="${k * W}" y2="${H}" stroke="${axis}"/>` : '').join('');
+  const svg = `<svg width="${idx.length * W}" height="${H}">
+    ${trenn}
+    <polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="${warm}" stroke-width="2.5" stroke-linejoin="round"/>
+    ${pts.map((p, k) => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${warm}"/>
+      <text x="${p[0]}" y="${p[1] - 8}" text-anchor="middle" font-size="13" font-weight="600" fill="${ink}">${Math.round(temps[k])}°</text>`).join('')}
+  </svg>`;
+  // Tagesnamen + Uhrzeit oben, dann Kurve, dann Symbole/Regen
+  const kopf = idx.map((i, k) => { const t = h.time[i], std = t.slice(11, 13), neu = k === 0 || std === '00';
+    const kurz = ['06', '12', '18'].includes(std) ? `<span style="color:var(--muted);font-weight:500">${tagName(t.slice(0, 10)).split(' ')[0]}</span>` : '';
+    return `<div class="col${neu && k > 0 ? ' dsep' : ''}"><div class="dname">${neu ? tagName(t.slice(0, 10)) : kurz}</div><div class="time">${std} Uhr</div></div>`; }).join('');
+  const unten = idx.map((i, k) => { const t = h.time[i], std = t.slice(11, 13), neu = std === '00' && k > 0;
+    const r = h.precipitation[i] || 0, pp = h.precipitation_probability[i];
+    return `<div class="col${neu ? ' dsep' : ''}">
+      <div class="ico" title="${wText(h.weather_code[i])}">${wIcon(h.weather_code[i])}</div>
+      <div class="rainbox"><div class="rainbar" style="height:${r > 0 ? Math.max(3, r / rMax * 44) : 0}px"></div></div>
+      <div class="mm">${r >= 0.1 ? nf(r, 1) : '–'}</div>
+      <div class="pp">${pp != null ? nf(pp, 0) + ' %' : ''}</div></div>`; }).join('');
+  $('hours').innerHTML = `<div class="track" style="--w:${W}px;width:${idx.length * W}px">
+    <div class="cols">${kopf}</div>${svg}<div class="cols">${unten}</div></div>`;
+}
 
 // ── Diagramm-Helfer ──
 function drawChart(id, type, labels, series, unit, extra, opts = {}) {
