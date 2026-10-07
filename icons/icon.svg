@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a98ec"/>
+      <stop offset="1" stop-color="#1c5cab"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Sonne + Wolke oben links -->
+  <g transform="translate(132 112)">
+    <g stroke="#ffc83d" stroke-width="12" stroke-linecap="round">
+      <line x1="0" y1="-78" x2="0" y2="-62"/><line x1="-55" y1="-55" x2="-44" y2="-44"/>
+      <line x1="-78" y1="0" x2="-62" y2="0"/><line x1="55" y1="-55" x2="44" y2="-44"/>
+      <line x1="-55" y1="55" x2="-44" y2="44"/>
+    </g>
+    <circle r="46" fill="#ffc83d"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="150" cy="146" r="34"/><circle cx="196" cy="128" r="44"/><circle cx="238" cy="152" r="30"/>
+    <rect x="116" y="146" width="150" height="40" rx="20"/>
+  </g>
+  <!-- Sauer -->
+  <path d="M0 440 q32 -14 64 0 t64 0 t64 0 t64 0 t64 0 t64 0 t64 0 t64 0 V512 H0z" fill="#9fd0ff"/>
+  <path d="M0 464 q32 -14 64 0 t64 0 t64 0 t64 0 t64 0 t64 0 t64 0 t64 0 V512 H0z" fill="#d6ecff"/>
+  <!-- Esel -->
+  <g>
+    <!-- Schwanz -->
+    <path d="M126 300 q-26 26 -22 70" stroke="#5a5f6b" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <ellipse cx="104" cy="378" rx="9" ry="16" fill="#2c3038"/>
+    <!-- hintere Beine (dunkler) -->
+    <rect x="150" y="330" width="30" height="96" rx="12" fill="#4b505b"/>
+    <rect x="292" y="330" width="30" height="96" rx="12" fill="#4b505b"/>
+    <!-- Körper -->
+    <path d="M128 300 q4 -58 84 -60 l100 -4 q50 4 52 54 q2 52 -50 66 l-110 4 q-76 2 -76 -60z" fill="#6b717d"/>
+    <!-- heller Bauch -->
+    <path d="M160 352 q70 14 150 0 q-10 16 -40 18 l-80 2 q-24 -4 -30 -20z" fill="#c9ccd3"/>
+    <!-- vordere Beine -->
+    <rect x="184" y="340" width="30" height="88" rx="12" fill="#6b717d"/>
+    <rect x="320" y="334" width="30" height="94" rx="12" fill="#6b717d"/>
+    <!-- Hufe -->
+    <g fill="#2c3038">
+      <rect x="150" y="414" width="30" height="14" rx="5"/><rect x="184" y="414" width="30" height="14" rx="5"/>
+      <rect x="292" y="414" width="30" height="14" rx="5"/><rect x="320" y="414" width="30" height="14" rx="5"/>
+    </g>
+    <!-- Hals -->
+    <path d="M300 250 q20 -50 70 -76 l34 30 q-30 40 -38 96 z" fill="#6b717d"/>
+    <!-- Mähne -->
+    <path d="M300 250 q20 -52 66 -80" stroke="#2c3038" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <!-- Ohren -->
+    <path d="M372 172 q-26 -58 -16 -104 q30 38 36 98z" fill="#6b717d"/>
+    <path d="M366 160 q-14 -40 -8 -70 q16 28 20 66z" fill="#c9ccd3"/>
+    <path d="M394 168 q4 -62 36 -96 q8 50 -14 104z" fill="#6b717d"/>
+    <path d="M402 160 q6 -40 24 -64 q4 34 -10 68z" fill="#c9ccd3"/>
+    <!-- Kopf -->
+    <path d="M362 176 q40 -18 66 18 l34 56 q12 26 -14 36 q-26 8 -46 -10 l-44 -42 q-24 -24 4 -58z" fill="#6b717d"/>
+    <!-- helle Schnauze -->
+    <path d="M424 236 l30 22 q14 22 -8 30 q-24 6 -40 -10 q-6 -26 18 -42z" fill="#c9ccd3"/>
+    <circle cx="444" cy="272" r="4" fill="#2c3038"/>
+    <!-- Auge -->
+    <circle cx="398" cy="214" r="7" fill="#1d2027"/>
+    <circle cx="400" cy="212" r="2.4" fill="#ffffff"/>
+  </g>
+</svg>
