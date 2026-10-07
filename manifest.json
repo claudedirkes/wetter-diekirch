@@ -1,6 +1,6 @@
 {
   "name": "Wetter Diekirch",
-  "short_name": "Wetter DK",
+  "short_name": "Wetter Diekirch",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
