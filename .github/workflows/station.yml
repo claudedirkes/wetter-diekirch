@@ -1,0 +1,33 @@
+# Empfängt die Messwerte der eigenen ESP32-Wetterstation (repository_dispatch "station").
+name: Eigene Station
+
+on:
+  repository_dispatch:
+    types: [station]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daten-commit
+  cancel-in-progress: false
+
+jobs:
+  empfang:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Werte speichern
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: python scripts/station_empfang.py
+      - name: Speichern
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add data/station
+          git commit -m "Eigene Station" || exit 0
+          git pull --rebase -q && git push
