@@ -153,7 +153,7 @@
 
   <!-- Meng Statioun -->
   <div class="card section" id="liveCard">
-    <h2>Gemessen – meng Statioun</h2>
+    <h2>Gemessen – meng Statioun Sauerwiss</h2>
     <div class="live" id="live"><div class="st"><div class="d">Lade Messwerte …</div></div></div>
     <h2 style="margin-top:4px">Temperatur der letzten 24 Stunden – gemessen (°C)</h2>
     <div class="chartbox"><canvas id="cLive"></canvas></div>
@@ -246,7 +246,7 @@
     hier zu Tageswerten zusammengefasst und wöchentlich aktualisiert. Die Station veröffentlicht ihre Daten monatlich, die letzten Wochen fehlen daher meist.
     Lufttemperatur ab 2016 um −1,6 °C korrigiert (laut Station misst der Fühler seitdem zu hoch); 2014–2016 aus Widerstandswerten umgerechnet –
     Temperaturen dieser Jahre (v. a. 2015) sind unsicher. Niederschlag ist der verlässlichere Messwert.<br>
-    <b>Meng Statioun:</b> eigene Wetterstation in Diekirch (ESP32 mit BME280 und Misol-Regenmesser), Werte alle 10 Minuten.<br>
+    <b>Meng Statioun Sauerwiss:</b> eigene Wetterstation in Diekirch (Sauerwiss) (ESP32 mit BME280 und Misol-Regenmesser), Werte alle 10 Minuten.<br>
     <b>Messwerte Ettelbruck:</b> AgriMeteo Luxembourg (Ministère de l'Agriculture, CC0,
     <a href="https://www.agrimeteo.lu" target="_blank" rel="noopener">agrimeteo.lu</a>) – Tageswerte ab 2004.
 <br>
@@ -736,7 +736,7 @@ async function loadLive() {
   if (!ew.length) { $('live').innerHTML = '<div class="st"><div class="d">Noch keine Messwerte der eigenen Station.</div></div>'; return; }
   const l = ew[ew.length - 1], heute = l.zeit.slice(0, 10);
   const hw = ew.filter(x => x.zeit.startsWith(heute));
-  $('live').innerHTML = stTile('Meng Statioun', 'Diekirch', l.t, [
+  $('live').innerHTML = stTile('Meng Statioun Sauerwiss', 'Diekirch', l.t, [
     ['Feuchte', nf(l.rf, 0) + ' %'], ['Luftdruck', nf(l.p, 1) + ' hPa'],
     ['Regen heute', nf(hw.reduce((a, x) => a + (x.regen || 0), 0), 1) + ' mm'],
     ['heute', `${nf(Math.min(...hw.map(x => x.t)), 1)} / ${nf(Math.max(...hw.map(x => x.t)), 1)} °C`]
@@ -745,7 +745,7 @@ async function loadLive() {
   const grenze = Date.now() - 24 * 3600e3;
   const v = ew.filter(x => new Date(x.utc).getTime() >= grenze);
   drawChart('cLive', 'line', v.map(x => x.zeit.slice(11)), [
-    { label: 'Meng Statioun', data: v.map(x => x.t), color: css('--own') }
+    { label: 'Meng Statioun Sauerwiss', data: v.map(x => x.t), color: css('--own') }
   ], '°C', i => [fmtDate(v[i].zeit.slice(0, 10)) + ' ' + v[i].zeit.slice(11) + ' Uhr',
     `Feuchte: ${nf(v[i].rf, 0)} %`, `Regen (10 min): ${nf(v[i].regen, 1)} mm`]);
 }
