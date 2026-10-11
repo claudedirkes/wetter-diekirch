@@ -18,19 +18,19 @@
   :root{
     --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
     --grid:#e1e0d9; --axis:#c3c2b7; --border:#e1e0d9;
-    --rain:#2a78d6; --warm:#eb6834; --agri:#1baf7a; --cold:#2a78d6; --prev:#c3c2b7; --error:#d03b3b;
+    --rain:#2a78d6; --own:#7b4fd6; --warm:#eb6834; --agri:#1baf7a; --cold:#2a78d6; --prev:#c3c2b7; --error:#d03b3b;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
       --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
       --grid:#2c2c2a; --axis:#383835; --border:#2c2c2a;
-      --rain:#3987e5; --warm:#d95926; --agri:#199e70; --cold:#3987e5; --prev:#52514e;
+      --rain:#3987e5; --own:#9a74e8; --warm:#d95926; --agri:#199e70; --cold:#3987e5; --prev:#52514e;
     }
   }
   :root[data-theme="dark"]{
     --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
     --grid:#2c2c2a; --axis:#383835; --border:#2c2c2a;
-    --rain:#3987e5; --warm:#d95926; --agri:#199e70; --cold:#3987e5; --prev:#52514e;
+    --rain:#3987e5; --own:#9a74e8; --warm:#d95926; --agri:#199e70; --cold:#3987e5; --prev:#52514e;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--page);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -156,7 +156,7 @@
     <h2>Gemessen in der Nähe</h2>
     <div class="live" id="live"><div class="st"><div class="d">Lade Messwerte …</div></div></div>
     <h2 style="margin-top:4px">Temperatur der letzten 24 Stunden – gemessen (°C)</h2>
-    <div class="legend"><span style="--c:var(--agri)">Ettelbruck</span><span style="--c:var(--warm)">Bettendorf</span></div>
+    <div class="legend"><span style="--c:var(--own)">Meng Statioun</span><span style="--c:var(--agri)">Ettelbruck</span><span style="--c:var(--warm)">Bettendorf</span></div>
     <div class="chartbox"><canvas id="cLive"></canvas></div>
   </div>
 
@@ -744,12 +744,27 @@ async function loadLive() {
     ] : [], last ? new Date(last.zeit) : null, 'AgriMeteo, 10-min-Werte'));
     serie[name] = w;
   }
+  // Eigene Station (ESP32, alle 10 min über GitHub)
+  const lux = d => new Date(d).toLocaleString('sv-SE', { timeZone: 'Europe/Luxembourg' }).slice(0, 16).replace(' ', 'T');
+  const es = await fetch('data/station/letzte.json' + bust(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  const ew = es ? es.werte.filter(x => x[1] != null).map(x => ({ zeit: lux(x[0].replace('Z', ':00Z')), utc: x[0], t: x[1], rf: x[2], p: x[3], regen: x[4] })) : [];
+  if (ew.length) {
+    const l = ew[ew.length - 1], heute = l.zeit.slice(0, 10);
+    const hw = ew.filter(x => x.zeit.startsWith(heute));
+    tiles.unshift(stTile('Meng Statioun', 'Diekirch', l.t, [
+      ['Feuchte', nf(l.rf, 0) + ' %'], ['Luftdruck', nf(l.p, 1) + ' hPa'],
+      ['Regen heute', nf(hw.reduce((a, x) => a + (x.regen || 0), 0), 1) + ' mm'],
+      ['heute', `${nf(Math.min(...hw.map(x => x.t)), 1)} / ${nf(Math.max(...hw.map(x => x.t)), 1)} °C`]
+    ], new Date(l.utc.replace('Z', ':00Z')), 'ESP32, 10-min-Werte'));
+  }
+  serie.eegen = new Map(ew.map(x => [x.zeit.slice(0, 15) + '0', x.t]));   // auf 10-min-Raster
   $('live').innerHTML = tiles.join('');
   // Verlauf der letzten 24 h (gemeinsame Zeitachse aus Ettelbruck)
   const basis = (serie.Ettelbruck || []).slice(-144);
   if (basis.length) {
     const bet = new Map((serie.Bettendorf || []).map(x => [x.zeit, x.t]));
     drawChart('cLive', 'line', basis.map(x => x.zeit.slice(11)), [
+      { label: 'Meng Statioun', data: basis.map(x => serie.eegen.has(x.zeit) ? serie.eegen.get(x.zeit) : null), color: css('--own') },
       { label: 'Ettelbruck', data: basis.map(x => x.t), color: css('--agri') },
       { label: 'Bettendorf', data: basis.map(x => bet.has(x.zeit) ? bet.get(x.zeit) : null), color: css('--warm') }
     ], '°C', i => [fmtDate(basis[i].zeit.slice(0, 10)) + ' ' + basis[i].zeit.slice(11) + ' Uhr', `Regen (10 min): ${nf(basis[i].regen, 1)} mm`]);
