@@ -153,11 +153,10 @@
   </div>
 
   <div class="card section" id="liveCard">
-    <h2>Gemessen in der Nähe</h2>
+    <h2>Gemessen – meng Statioun</h2>
     <div class="live" id="live"><div class="st"><div class="d">Lade Messwerte …</div></div></div>
     <h2 style="margin-top:4px">Temperatur der letzten 24 Stunden – gemessen (°C)</h2>
-    <div class="legend"><span style="--c:var(--own)">Meng Statioun</span><span style="--c:var(--agri)">Ettelbruck</span><span style="--c:var(--warm)">Bettendorf</span></div>
-    <div class="chartbox"><canvas id="cLive"></canvas></div>
+        <div class="chartbox"><canvas id="cLive"></canvas></div>
   </div>
 
   <h2 style="margin:4px 0 8px">Modell für Diekirch (Open-Meteo)</h2>
@@ -247,8 +246,9 @@
     hier zu Tageswerten zusammengefasst und wöchentlich aktualisiert. Die Station veröffentlicht ihre Daten monatlich, die letzten Wochen fehlen daher meist.
     Lufttemperatur ab 2016 um −1,6 °C korrigiert (laut Station misst der Fühler seitdem zu hoch); 2014–2016 aus Widerstandswerten umgerechnet –
     Temperaturen dieser Jahre (v. a. 2015) sind unsicher. Niederschlag ist der verlässlichere Messwert.<br>
-    <b>Messwerte Ettelbruck/Bettendorf:</b> AgriMeteo Luxembourg (Ministère de l'Agriculture, CC0,
-    <a href="https://www.agrimeteo.lu" target="_blank" rel="noopener">agrimeteo.lu</a>) – 10-Minuten-Werte, alle 30 min abgerufen; Tageswerte Ettelbruck ab 2004.
+    <b>Meng Statioun:</b> eigene Wetterstation in Diekirch (ESP32 mit BME280 und Misol-Regenmesser), Werte alle 10 Minuten.<br>
+    <b>Messwerte Ettelbruck:</b> AgriMeteo Luxembourg (Ministère de l'Agriculture, CC0,
+    <a href="https://www.agrimeteo.lu" target="_blank" rel="noopener">agrimeteo.lu</a>) – Tageswerte ab 2004.
 <br>
     <b>Vorhersage und Modell-Rückblick:</b> <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (Wettermodelle bzw. ERA5-Reanalyse, CC BY 4.0)
     für 49,868° N, 6,159° O – Modellwerte, keine Messung; lokale Schauer können abweichen.
@@ -728,47 +728,26 @@ function stTile(name, dist, t, rows, zeit, quelle) {
     <div class="age${m != null && m > 120 ? ' old' : ''}">${zeit ? `gemessen ${zeit.toLocaleTimeString('de-LU', { hour: '2-digit', minute: '2-digit' })} Uhr (${altText(m)})` : 'keine Daten'}</div></div>`;
 }
 async function loadLive() {
-  const tiles = [];
-  // AgriMeteo (vom GitHub-Job alle 30 min gespeichert)
-  const ag = await fetch('data/live/agrimeteo.json' + bust(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
-  const serie = {};
-  for (const [name, dist] of [['Ettelbruck', 'ca. 4 km'], ['Bettendorf', 'ca. 5 km']]) {
-    const w = ag && ag.stationen[name] ? ag.stationen[name].werte.filter(x => x.t != null) : [];
-    const last = w[w.length - 1];
-    const heute = last ? last.zeit.slice(0, 10) : '';
-    const regenHeute = w.filter(x => x.zeit.startsWith(heute)).reduce((a, x) => a + (x.regen || 0), 0);
-    const tagesW = w.filter(x => x.zeit.startsWith(heute)).map(x => x.t);
-    tiles.push(stTile(name, dist, last && last.t, last ? [
-      ['Feuchte', nf(last.rf, 0) + ' %'], ['Wind', nf(last.wind * 3.6, 0) + ' km/h'],
-      ['Regen heute', nf(regenHeute, 1) + ' mm'], ['heute', `${nf(Math.min(...tagesW), 1)} / ${nf(Math.max(...tagesW), 1)} °C`]
-    ] : [], last ? new Date(last.zeit) : null, 'AgriMeteo, 10-min-Werte'));
-    serie[name] = w;
-  }
   // Eigene Station (ESP32, alle 10 min über GitHub)
   const lux = d => new Date(d).toLocaleString('sv-SE', { timeZone: 'Europe/Luxembourg' }).slice(0, 16).replace(' ', 'T');
   const es = await fetch('data/station/letzte.json' + bust(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
-  const ew = es ? es.werte.filter(x => x[1] != null).map(x => ({ zeit: lux(x[0].replace('Z', ':00Z')), utc: x[0], t: x[1], rf: x[2], p: x[3], regen: x[4] })) : [];
-  if (ew.length) {
-    const l = ew[ew.length - 1], heute = l.zeit.slice(0, 10);
-    const hw = ew.filter(x => x.zeit.startsWith(heute));
-    tiles.unshift(stTile('Meng Statioun', 'Diekirch', l.t, [
-      ['Feuchte', nf(l.rf, 0) + ' %'], ['Luftdruck', nf(l.p, 1) + ' hPa'],
-      ['Regen heute', nf(hw.reduce((a, x) => a + (x.regen || 0), 0), 1) + ' mm'],
-      ['heute', `${nf(Math.min(...hw.map(x => x.t)), 1)} / ${nf(Math.max(...hw.map(x => x.t)), 1)} °C`]
-    ], new Date(l.utc.replace('Z', ':00Z')), 'ESP32, 10-min-Werte'));
-  }
-  serie.eegen = new Map(ew.map(x => [x.zeit.slice(0, 15) + '0', x.t]));   // auf 10-min-Raster
-  $('live').innerHTML = tiles.join('');
-  // Verlauf der letzten 24 h (gemeinsame Zeitachse aus Ettelbruck)
-  const basis = (serie.Ettelbruck || []).slice(-144);
-  if (basis.length) {
-    const bet = new Map((serie.Bettendorf || []).map(x => [x.zeit, x.t]));
-    drawChart('cLive', 'line', basis.map(x => x.zeit.slice(11)), [
-      { label: 'Meng Statioun', data: basis.map(x => serie.eegen.has(x.zeit) ? serie.eegen.get(x.zeit) : null), color: css('--own') },
-      { label: 'Ettelbruck', data: basis.map(x => x.t), color: css('--agri') },
-      { label: 'Bettendorf', data: basis.map(x => bet.has(x.zeit) ? bet.get(x.zeit) : null), color: css('--warm') }
-    ], '°C', i => [fmtDate(basis[i].zeit.slice(0, 10)) + ' ' + basis[i].zeit.slice(11) + ' Uhr', `Regen (10 min): ${nf(basis[i].regen, 1)} mm`]);
-  }
+  const ew = es ? es.werte.filter(x => x[1] != null).map(x => ({ utc: x[0].replace('Z', ':00Z'), t: x[1], rf: x[2], p: x[3], regen: x[4] })) : [];
+  ew.forEach(x => x.zeit = lux(x.utc));
+  if (!ew.length) { $('live').innerHTML = '<div class="st"><div class="d">Noch keine Messwerte der eigenen Station.</div></div>'; return; }
+  const l = ew[ew.length - 1], heute = l.zeit.slice(0, 10);
+  const hw = ew.filter(x => x.zeit.startsWith(heute));
+  $('live').innerHTML = stTile('Meng Statioun', 'Diekirch', l.t, [
+    ['Feuchte', nf(l.rf, 0) + ' %'], ['Luftdruck', nf(l.p, 1) + ' hPa'],
+    ['Regen heute', nf(hw.reduce((a, x) => a + (x.regen || 0), 0), 1) + ' mm'],
+    ['heute', `${nf(Math.min(...hw.map(x => x.t)), 1)} / ${nf(Math.max(...hw.map(x => x.t)), 1)} °C`]
+  ], new Date(l.utc), 'ESP32, 10-min-Werte');
+  // Verlauf der letzten 24 h
+  const grenze = Date.now() - 24 * 3600e3;
+  const v = ew.filter(x => new Date(x.utc).getTime() >= grenze);
+  drawChart('cLive', 'line', v.map(x => x.zeit.slice(11)), [
+    { label: 'Meng Statioun', data: v.map(x => x.t), color: css('--own') }
+  ], '°C', i => [fmtDate(v[i].zeit.slice(0, 10)) + ' ' + v[i].zeit.slice(11) + ' Uhr',
+    `Feuchte: ${nf(v[i].rf, 0)} %`, `Regen (10 min): ${nf(v[i].regen, 1)} mm`]);
 }
 
 // ── Start / Aktualisieren ──
