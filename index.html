@@ -138,7 +138,14 @@
 
   <div id="err" class="msg err hidden"></div>
 
-  <!-- Jetzt -->
+  <!-- Meng Statioun -->
+  <div class="card section" id="liveCard">
+    <h2>Gemessen – meng Statioun</h2>
+    <div class="live" id="live"><div class="st"><div class="d">Lade Messwerte …</div></div></div>
+    <h2 style="margin-top:4px">Temperatur der letzten 24 Stunden – gemessen (°C)</h2>
+    <div class="chartbox"><canvas id="cLive"></canvas></div>
+  </div>
+
   <!-- 7 Tage -->
   <div class="card section">
     <h2>Vorhersage 7 Tage (Modell Open-Meteo)</h2>
@@ -150,13 +157,6 @@
     <h2>Nächste 48 Stunden</h2>
     <p class="hint">Zur Seite wischen für spätere Stunden. Blau = Niederschlag in mm pro Stunde, darunter die Regenwahrscheinlichkeit.</p>
     <div class="hours" id="hours"></div>
-  </div>
-
-  <div class="card section" id="liveCard">
-    <h2>Gemessen – meng Statioun</h2>
-    <div class="live" id="live"><div class="st"><div class="d">Lade Messwerte …</div></div></div>
-    <h2 style="margin-top:4px">Temperatur der letzten 24 Stunden – gemessen (°C)</h2>
-        <div class="chartbox"><canvas id="cLive"></canvas></div>
   </div>
 
   <h2 style="margin:4px 0 8px">Modell für Diekirch (Open-Meteo)</h2>
