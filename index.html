@@ -671,6 +671,13 @@ function drawChart(id, type, labels, series, unit, extra, opts = {}) {
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       interaction: { mode: 'index', intersect: false },
+      // Detail-Anzeige 2 s nach der letzten Berührung automatisch ausblenden
+      onHover: (e, els, ch) => {
+        clearTimeout(ch._ausblenden);
+        if (els.length) ch._ausblenden = setTimeout(() => {
+          ch.setActiveElements([]); ch.tooltip.setActiveElements([], { x: 0, y: 0 }); ch.update('none');
+        }, 2000);
+      },
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: {
