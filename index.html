@@ -157,6 +157,8 @@
     <div class="live" id="live"><div class="st"><div class="d">Lade Messwerte …</div></div></div>
     <h2 style="margin-top:4px">Temperatur der letzten 24 Stunden – gemessen (°C)</h2>
     <div class="chartbox"><canvas id="cLive"></canvas></div>
+    <h2 style="margin-top:4px">Niederschlag der letzten 24 Stunden – gemessen (mm pro Stunde)</h2>
+    <div class="chartbox"><canvas id="cLiveRegen"></canvas></div>
   </div>
 
   <h2 style="margin:4px 0 8px">Modell für Diekirch (Open-Meteo)</h2>
@@ -739,6 +741,7 @@ async function loadLive() {
   $('live').innerHTML = stTile('Meng Statioun Sauerwiss', 'Diekirch', l.t, [
     ['Feuchte', nf(l.rf, 0) + ' %'], ['Luftdruck', nf(l.p, 1) + ' hPa'],
     ['Regen heute', nf(hw.reduce((a, x) => a + (x.regen || 0), 0), 1) + ' mm'],
+    ['Regen 24 h', nf(ew.filter(x => new Date(x.utc).getTime() >= Date.now() - 24 * 3600e3).reduce((a, x) => a + (x.regen || 0), 0), 1) + ' mm'],
     ['heute', `${nf(Math.min(...hw.map(x => x.t)), 1)} / ${nf(Math.max(...hw.map(x => x.t)), 1)} °C`]
   ], new Date(l.utc), 'ESP32, 10-min-Werte');
   // Verlauf der letzten 24 h
@@ -748,6 +751,16 @@ async function loadLive() {
     { label: 'Meng Statioun Sauerwiss', data: v.map(x => x.t), color: css('--own') }
   ], '°C', i => [fmtDate(v[i].zeit.slice(0, 10)) + ' ' + v[i].zeit.slice(11) + ' Uhr',
     `Feuchte: ${nf(v[i].rf, 0)} %`, `Regen (10 min): ${nf(v[i].regen, 1)} mm`]);
+  // Niederschlag pro Stunde (letzte 24 h, Ortszeit)
+  const stunden = [];
+  for (let k = 23; k >= 0; k--) stunden.push(lux(Date.now() - k * 3600e3).slice(0, 13));
+  const summe = Object.fromEntries(stunden.map(h => [h, 0]));
+  v.forEach(x => { const h = x.zeit.slice(0, 13); if (h in summe) summe[h] += x.regen || 0; });
+  const regen24 = Object.values(summe).reduce((a, b) => a + b, 0);
+  drawChart('cLiveRegen', 'bar', stunden.map(h => h.slice(11) + ' Uhr'), [
+    { label: 'Regen', data: stunden.map(h => Math.round(summe[h] * 10) / 10), color: css('--rain') }
+  ], 'mm', i => [fmtDate(stunden[i].slice(0, 10)) + ', ' + stunden[i].slice(11) + '–' + String((+stunden[i].slice(11) + 1) % 24).padStart(2, '0') + ' Uhr',
+    `Summe 24 h: ${nf(regen24, 1)} mm`], { suggestedMax: 1 });
 }
 
 // ── Start / Aktualisieren ──
