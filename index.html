@@ -67,6 +67,7 @@
   button:disabled{opacity:.5;cursor:default}
   .presets{display:flex;flex-wrap:wrap;gap:6px}
   .presets button{padding:5px 9px;font-size:13px}
+  .presets button.on{background:var(--rain);border-color:var(--rain);color:#fff;font-weight:600}
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px;margin-bottom:12px}
   .kpi{border:1px solid var(--border);border-radius:8px;padding:10px 12px}
   .kpi .l{font-size:12px;color:var(--ink2)}
@@ -476,8 +477,14 @@ function preset(p) {
   else if (p === 'vorjahr') { f = new Date(t.getFullYear() - 1, 0, 1, 12); to = new Date(t.getFullYear() - 1, 11, 31, 12); }
   else if (p === 'alles') f = new Date(1994, 2, 11, 12);
   $('from').value = iso(f); $('to').value = iso(to);
+  markiere(p);
+}
+// gewählten Zeitraum blau markieren (bei eigenem Datum: keine Markierung)
+function markiere(p) {
+  document.querySelectorAll('[data-p]').forEach(b => b.classList.toggle('on', b.dataset.p === p));
 }
 document.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => { preset(b.dataset.p); loadHistory(); }));
+['from', 'to'].forEach(id => $(id).addEventListener('change', () => markiere(null)));
 $('load').addEventListener('click', loadHistory);
 $('src').addEventListener('change', loadHistory);
 
@@ -786,7 +793,7 @@ async function loadAll(force) {
   const last = lcdLast();
   if (last) {
     $('lcdInfo').textContent = `Messwerte der Station in Diekirch von ${fmtDate(Object.values(idx.jahre)[0].von)} bis ${fmtDate(last)} (Import vom ${fmtDate(idx.stand)}).`;
-    if (!force || !$('from').value) { $('to').value = last; $('from').value = addDays(last, -29); }  // Start: letzte 30 Tage mit Messwerten
+    if (!force || !$('from').value) { $('to').value = last; $('from').value = addDays(last, -29); markiere('30'); }  // Start: letzte 30 Tage mit Messwerten
     renderYears();
   } else {
     $('src').value = 'model'; $('mSrc').value = 'model';
