@@ -158,6 +158,9 @@
     <div class="live" id="live"><div class="st"><div class="d">Lade Messwerte …</div></div></div>
     <h2 style="margin-top:4px">Temperatur der letzten 24 Stunden – gemessen (°C)</h2>
     <div class="chartbox"><canvas id="cLive"></canvas></div>
+    <h2 style="margin-top:4px">Luftdruck der letzten 24 Stunden – gemessen (hPa)</h2>
+    <p class="hint" id="druckTrend"></p>
+    <div class="chartbox"><canvas id="cLiveDruck"></canvas></div>
     <h2 style="margin-top:4px">Niederschlag der letzten 24 Stunden – gemessen (mm pro Stunde)</h2>
     <div class="chartbox"><canvas id="cLiveRegen"></canvas></div>
   </div>
@@ -694,7 +697,7 @@ function drawChart(id, type, labels, series, unit, extra, opts = {}) {
       },
       scales: {
         x: { grid: { display: false }, ticks: { color: muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, border: { color: css('--axis') } },
-        y: { beginAtZero: unit !== '°C', suggestedMax: opts.suggestedMax, grid: { color: css('--grid') }, ticks: { color: muted }, border: { display: false } }
+        y: { beginAtZero: !['°C', 'hPa'].includes(unit), suggestedMax: opts.suggestedMax, grid: { color: css('--grid') }, ticks: { color: muted }, border: { display: false } }
       }
     }
   });
@@ -765,6 +768,17 @@ async function loadLive() {
     { label: 'Meng Statioun Sauerwiss', data: v.map(x => x.t), color: css('--own') }
   ], '°C', i => [fmtDate(v[i].zeit.slice(0, 10)) + ' ' + v[i].zeit.slice(11) + ' Uhr',
     `Feuchte: ${nf(v[i].rf, 0)} %`, `Regen (10 min): ${nf(v[i].regen, 1)} mm`]);
+  // Luftdruck (Station, nicht auf Meereshöhe umgerechnet) + Tendenz der letzten 3 h
+  const vp = v.filter(x => x.p != null);
+  drawChart('cLiveDruck', 'line', vp.map(x => x.zeit.slice(11)), [
+    { label: 'Luftdruck', data: vp.map(x => x.p), color: css('--agri') }
+  ], 'hPa', i => [fmtDate(vp[i].zeit.slice(0, 10)) + ' ' + vp[i].zeit.slice(11) + ' Uhr']);
+  const vor3 = vp.filter(x => new Date(x.utc).getTime() <= Date.now() - 3 * 3600e3).pop();
+  if (vor3 && vp.length) {
+    const d = vp[vp.length - 1].p - vor3.p;
+    $('druckTrend').textContent = `Tendenz 3 Stunden: ${d >= 0 ? '+' : '−'}${nf(Math.abs(d), 1)} hPa – ` +
+      (d > 1 ? 'steigt (eher besseres Wetter)' : d < -1 ? 'fällt (eher schlechteres Wetter)' : 'gleichbleibend');
+  } else $('druckTrend').textContent = '';
   // Niederschlag pro Stunde (letzte 24 h, Ortszeit)
   const stunden = [];
   for (let k = 23; k >= 0; k--) stunden.push(lux(Date.now() - k * 3600e3).slice(0, 13));
