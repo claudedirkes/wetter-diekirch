@@ -165,6 +165,19 @@
     <div class="chartbox"><canvas id="cLiveRegen"></canvas></div>
   </div>
 
+  <!-- Pegel Sauer -->
+  <div class="card section hidden" id="pegelCard">
+    <h2>Pegel der Sauer bei Diekirch – gemessen und Prognose</h2>
+    <div class="live" id="pegel"></div>
+    <div class="legend">
+      <span style="--c:var(--rain)">Gemessen</span>
+      <span style="--c:var(--own)">Prognose (Median)</span>
+      <span style="--c:var(--prev)">Spannweite 10–90 % / 30–70 %</span>
+    </div>
+    <div class="chartbox"><canvas id="cPegel"></canvas></div>
+    <p class="hint" id="pegelHint" style="margin-top:8px"></p>
+  </div>
+
   <h2 style="margin:4px 0 8px">Modell für Diekirch (Open-Meteo)</h2>
   <div class="card section now" id="nowCard">
     <div>
@@ -256,6 +269,8 @@
     <b>Messwerte Ettelbruck:</b> AgriMeteo Luxembourg (Ministère de l'Agriculture, CC0,
     <a href="https://www.agrimeteo.lu" target="_blank" rel="noopener">agrimeteo.lu</a>) – Tageswerte ab 2004.
 <br>
+    <b>Pegel der Sauer:</b> Administration de la gestion de l'eau, über <a href="https://inondations.public.lu/fr/sure/sure/diekirch.html" target="_blank" rel="noopener">inondations.lu</a>
+    (Station Diekirch, Wasserstand in cm, Prognose aus mehreren Modellläufen), alle 30 Minuten über einen GitHub-Job übernommen.<br>
     <b>Vorhersage und Modell-Rückblick:</b> <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (Wettermodelle bzw. ERA5-Reanalyse, CC BY 4.0)
     für 49,868° N, 6,159° O – Modellwerte, keine Messung; lokale Schauer können abweichen.
   </p>
@@ -791,6 +806,90 @@ async function loadLive() {
     `Summe 24 h: ${nf(regen24, 1)} mm`], { suggestedMax: 1 });
 }
 
+// ── Pegel der Sauer (inondations.lu, Daten über GitHub-Job) ──
+async function loadPegel() {
+  const d = await fetch('data/pegel/diekirch.json' + bust(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  const g = d && d.gemessen;
+  if (!g || !g.length) { $('pegelCard').classList.add('hidden'); return; }
+  $('pegelCard').classList.remove('hidden');
+  const lux = ms => new Date(ms).toLocaleString('sv-SE', { timeZone: TZ }).slice(0, 16).replace(' ', 'T');
+  const ms = t => new Date(t).getTime();
+  const kurz = s => `${s.slice(8, 10)}.${s.slice(5, 7)}. ${s.slice(11)}`;
+  const l = g[g.length - 1], tL = ms(l[0]), wert = l[1];
+  const vor = h => { const x = g.filter(p => ms(p[0]) <= tL - h * 3600e3).pop(); return x ? wert - x[1] : null; };
+  const diff = v => v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '±') + nf(Math.abs(v), 0) + ' cm';
+  const letzte24 = g.filter(p => ms(p[0]) >= tL - 24 * 3600e3).map(p => p[1]);
+
+  // Prognose: nur Werte nach der letzten Messung; Startpunkt = letzte Messung, damit das Band dort ansetzt
+  const P = d.prognose || {};
+  const pf = k => (P[k] || []).filter(p => ms(p[0]) > tL).map(p => ({ x: ms(p[0]), y: p[1] }));
+  const mitStart = arr => arr.length ? [{ x: tL, y: wert }, ...arr] : [];
+  const f = { p10: pf('p10'), p30: pf('p30'), p50: pf('p50'), p70: pf('p70'), p90: pf('p90') };
+  const hat = f.p50.length > 0;
+  const ende = hat ? f.p50[f.p50.length - 1] : null;
+
+  const age = minAlt(new Date(tL));
+  let h = `<div class="st"><div class="n">Sauer bei Diekirch</div><div class="d">inondations.lu · Wasserstand, 15-min-Werte</div>
+    <div class="t">${nf(wert, 0)}<small> cm</small></div>
+    <div class="row"><span>1 h <b>${diff(vor(1))}</b></span><span>24 h <b>${diff(vor(24))}</b></span>
+    <span>24 h min/max <b>${nf(Math.min(...letzte24), 0)} / ${nf(Math.max(...letzte24), 0)} cm</b></span></div>
+    <div class="age${age > 120 ? ' old' : ''}">gemessen ${new Date(tL).toLocaleTimeString('de-LU', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })} Uhr (${altText(age)})</div></div>`;
+  if (hat) {
+    const le = lux(ende.x), tag = TAGE[new Date(le.slice(0, 10) + 'T12:00:00').getDay()];
+    const hoch = Math.max(...f.p90.map(p => p.y));
+    h += `<div class="st"><div class="n">Prognose bis ${tag} ${le.slice(8, 10)}.${le.slice(5, 7)}., ${le.slice(11)} Uhr</div><div class="d">Median und Spannweite aus mehreren Modellläufen</div>
+      <div class="t">${nf(ende.y, 0)}<small> cm</small></div>
+      <div class="row"><span>Änderung <b>${diff(ende.y - wert)}</b></span>
+      <span>10–90 % <b>${nf(f.p10[f.p10.length - 1].y, 0)}–${nf(f.p90[f.p90.length - 1].y, 0)} cm</b></span>
+      <span>höchster Wert (90 %) <b>${nf(hoch, 0)} cm</b></span></div></div>`;
+  }
+  $('pegel').innerHTML = h;
+
+  // Diagramm: letzte 48 h gemessen + Prognose. x = echte Zeit (ms), Beschriftung in Luxemburger Ortszeit alle 6 h
+  const ab = tL - 48 * 3600e3;
+  const gem = g.filter(p => ms(p[0]) >= ab).map(p => ({ x: ms(p[0]), y: p[1] }));
+  const bis = hat ? ende.x : tL;
+  const ticks = [];
+  for (let t = Math.ceil(ab / 3600e3) * 3600e3; t <= bis; t += 3600e3) if (['00:00', '06:00', '12:00', '18:00'].includes(lux(t).slice(11))) ticks.push(t);
+  const rain = css('--rain'), own = css('--own'), prev = css('--prev'), muted = css('--muted');
+  const linie = (data, farbe, extra = {}) => ({ data, borderColor: farbe, backgroundColor: farbe, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2, tension: 0.2, ...extra });
+  const band = (data, fuell) => ({ data, borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, fill: fuell ? '-1' : false, backgroundColor: fuell || 'transparent', tension: 0.2 });
+  if (charts.cPegel) charts.cPegel.destroy();
+  charts.cPegel = new Chart($('cPegel'), {
+    type: 'line',
+    data: { datasets: [
+      { ...band(mitStart(f.p10)), label: '10 %' },
+      { ...band(mitStart(f.p90), prev + '55'), label: '90 %' },
+      { ...band(mitStart(f.p30)), label: '30 %' },
+      { ...band(mitStart(f.p70), prev + '99'), label: '70 %' },
+      { ...linie(mitStart(f.p50), own, { borderDash: [6, 4] }), label: 'Prognose (Median)' },
+      { ...linie(gem, rain), label: 'Gemessen' }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          filter: i => ['Gemessen', 'Prognose (Median)'].includes(i.dataset.label),
+          callbacks: {
+            title: items => items.length ? kurz(lux(items[0].parsed.x)) + ' Uhr' : '',
+            label: c => `${c.dataset.label}: ${nf(c.parsed.y, 0)} cm`
+          }
+        }
+      },
+      scales: {
+        x: { type: 'linear', min: ab, max: bis, grid: { display: false }, border: { color: css('--axis') },
+          afterBuildTicks: ax => { ax.ticks = ticks.map(value => ({ value })); },
+          ticks: { color: muted, maxRotation: 0, callback: v => { const s = lux(v); return s.slice(11) === '00:00' ? kurz(s).slice(0, 6) : s.slice(11); } } },
+        y: { beginAtZero: false, grid: { color: css('--grid') }, ticks: { color: muted, callback: v => v + ' cm' }, border: { display: false } }
+      }
+    }
+  });
+  $('pegelHint').textContent = 'Zum Vergleich (Station Diekirch): Mittelwasser ca. 183 cm, Vigilanzstufe orange ab 420 cm, rot ab 470 cm. ' +
+    'Die Station wird durch ein Wehr beeinflusst. Prognose und Messwerte ohne Gewähr – maßgeblich ist inondations.lu.';
+}
+
 // ── Start / Aktualisieren ──
 async function loadAll(force) {
   if (force) {                       // alles neu holen, Browser-Cache umgehen
@@ -800,6 +899,7 @@ async function loadAll(force) {
   }
   $('err').classList.add('hidden');
   loadLive().catch(e => console.warn('Live-Werte:', e));
+  loadPegel().catch(e => console.warn('Pegel:', e));
   const fc = loadForecast().catch(e => { $('err').textContent = 'Vorhersage konnte nicht geladen werden: ' + e.message; $('err').classList.remove('hidden'); });
   const idx = await fetch('data/lcd/index.json' + bust(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
   agriIndex = await fetch('data/agri/ettelbruck/index.json' + bust(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);

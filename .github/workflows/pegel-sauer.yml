@@ -1,0 +1,33 @@
+# Holt alle 30 Minuten Pegelstand und Prognose der Sauer bei Diekirch (inondations.lu).
+# (GitHub startet geplante Jobs oft mit einigen Minuten Verspätung.)
+name: Pegel Sauer Diekirch
+
+on:
+  schedule:
+    - cron: '12,42 * * * *'
+  workflow_dispatch:
+  push:
+    paths: ['scripts/pegel_sauer.ps1', '.github/workflows/pegel-sauer.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daten-commit
+  cancel-in-progress: false
+
+jobs:
+  pegel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pegel laden
+        shell: pwsh
+        run: ./scripts/pegel_sauer.ps1
+      - name: Speichern
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add data/pegel
+          git commit -m "Pegel Sauer Diekirch" || exit 0
+          git pull --rebase -q && git push
