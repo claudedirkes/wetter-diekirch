@@ -1,7 +1,7 @@
 {
  "quelle": "AgriMeteo Luxembourg – Station Ettelbruck (254 m), CC0 – agrimeteo.lu",
  "hinweis": "Temperatur-Minimum/-Maximum aus Stundenmitteln.",
- "stand": "2026-10-24",
+ "stand": "2026-10-25",
  "jahre": {
   "2004": {
    "von": "2004-09-18",
@@ -137,9 +137,9 @@
   },
   "2026": {
    "von": "2026-01-01",
-   "bis": "2026-10-22",
-   "tage": 288,
-   "regen_summe": 489.4
+   "bis": "2026-10-23",
+   "tage": 289,
+   "regen_summe": 500.8
   }
  }
 }
