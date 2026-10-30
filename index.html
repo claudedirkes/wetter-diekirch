@@ -119,6 +119,13 @@
   .hours .rainbar{width:60%;background:var(--rain);border-radius:3px 3px 0 0;min-height:0}
   .hours .mm{height:16px;color:var(--rain);font-weight:600}
   .hours .pp{height:16px;color:var(--muted)}
+  a{color:var(--rain)}
+  .note a{color:var(--rain);text-decoration:underline}
+  .hours{scrollbar-color:var(--axis) transparent;scrollbar-width:thin}
+  .hours::-webkit-scrollbar{height:8px}
+  .hours::-webkit-scrollbar-track{background:transparent}
+  .hours::-webkit-scrollbar-thumb{background:var(--axis);border-radius:4px}
+  .day .r .dry{color:var(--muted)}
   .hidden{display:none!important}
   @media (max-width:640px){ .now{grid-template-columns:1fr} .now .big{font-size:44px} .chartbox{height:210px} }
 </style>
@@ -132,12 +139,23 @@
     </div>
     <div class="topActions">
       <button type="button" id="refresh" class="primary" title="Alle Daten neu laden" aria-label="Aktualisieren">↻<span class="lbl"> Aktualisieren</span></button>
-      <a class="small" href="https://github.com/claudedirkes/wetter-diekirch/actions/workflows/lcd-import.yml" target="_blank" rel="noopener"
+      <a class="small hidden" id="adminLink" href="https://github.com/claudedirkes/wetter-diekirch/actions/workflows/lcd-import.yml" target="_blank" rel="noopener"
          title="Öffnet GitHub – dort „Run workflow“ klicken (nur als Besitzer möglich)">Stationsdaten neu importieren ↗</a>
     </div>
   </div>
 
   <div id="err" class="msg err hidden"></div>
+
+  <h2 style="margin:4px 0 8px">Jetzt in Diekirch (Modell Open-Meteo)</h2>
+  <div class="card section now" id="nowCard">
+    <div>
+      <div class="big" id="nowT">–</div>
+      <div class="cond" id="nowCond"></div>
+      <div class="feel" id="nowFeel"></div>
+      <div class="feel" style="color:var(--muted)">berechnet für Diekirch, nicht gemessen</div>
+    </div>
+    <div class="facts" id="nowFacts"></div>
+  </div>
 
   <!-- 7 Tage -->
   <div class="card section">
@@ -148,7 +166,7 @@
   <!-- 48 h -->
   <div class="card section">
     <h2>Nächste 48 Stunden</h2>
-    <p class="hint">Zur Seite wischen für spätere Stunden. Blau = Niederschlag in mm pro Stunde, darunter die Regenwahrscheinlichkeit.</p>
+    <p class="hint" id="hoursHint">Zur Seite wischen für spätere Stunden.</p>
     <div class="hours" id="hours"></div>
   </div>
 
@@ -172,24 +190,11 @@
     <div class="legend">
       <span style="--c:var(--rain)">Gemessen</span>
       <span style="--c:var(--own)">Prognose (Median)</span>
-      <span style="--c:var(--prev)">Spannweite 10–90 % / 30–70 %</span>
+      <span id="pegelLegBand" style="--c:var(--prev)">Spannweite 10–90 % / 30–70 %</span>
     </div>
     <div class="chartbox"><canvas id="cPegel"></canvas></div>
     <p class="hint" id="pegelHint" style="margin-top:8px"></p>
   </div>
-
-  <h2 style="margin:4px 0 8px">Modell für Diekirch (Open-Meteo)</h2>
-  <div class="card section now" id="nowCard">
-    <div>
-      <div class="big" id="nowT">–</div>
-      <div class="cond" id="nowCond"></div>
-      <div class="feel" id="nowFeel"></div>
-      <div class="feel" style="color:var(--muted)">berechnet für Diekirch, nicht gemessen</div>
-    </div>
-    <div class="facts" id="nowFacts"></div>
-  </div>
-
-
 
   <!-- Rückblick -->
   <div class="card section">
@@ -241,7 +246,6 @@
         </select>
       </label>
       <label>Jahr <select id="mYear"></select></label>
-      <button type="button" id="mLoad">Anzeigen</button>
     </div>
     <div id="mMsg" class="msg hidden"></div>
     <div id="mResult" class="hidden">
@@ -257,6 +261,7 @@
     <div class="kpis" id="yKpis"></div>
     <div class="legend" id="yLeg"><span style="--c:var(--rain)">Diekirch (meteoLCD)</span><span style="--c:var(--agri)">Ettelbruck (AgriMeteo)</span><span id="yLegM" class="hidden" style="--c:var(--prev)">Modell</span></div>
     <div class="chartbox"><canvas id="cYears"></canvas></div>
+    <p class="hint" id="yHint" style="margin-top:8px"></p>
   </div>
 
   <p class="note">
@@ -356,7 +361,8 @@ async function loadForecast() {
       <div class="d">${wd}</div><div class="muted" style="font-size:12px;color:var(--muted)">${t.slice(8, 10)}.${t.slice(5, 7)}.</div>
       <div class="e">${wIcon(d0.weather_code[i])}</div>
       <div class="t"><span class="max">${nf(d0.temperature_2m_max[i], 0)}°</span> / <span class="min">${nf(d0.temperature_2m_min[i], 0)}°</span></div>
-      <div class="r">💧 <b>${nf(d0.precipitation_sum[i], 1)} mm</b> · ${nf(d0.precipitation_probability_max[i], 0)} %</div>
+      <div class="r">💧 ${d0.precipitation_sum[i] >= 0.1 ? `<b>${nf(d0.precipitation_sum[i], 1)} mm</b> · ${nf(d0.precipitation_probability_max[i], 0)} %`
+        : `<span class="dry">trocken${d0.precipitation_probability_max[i] >= 10 ? ' · ' + nf(d0.precipitation_probability_max[i], 0) + ' %' : ''}</span>`}</div>
       <div class="r">💨 ${nf(d0.wind_speed_10m_max[i], 0)} km/h (Böen ${nf(d0.wind_gusts_10m_max[i], 0)})</div>
       <div class="r">☀️ ${nf(d0.sunshine_duration[i] / 3600, 1)} h</div>
     </div>`;
@@ -602,10 +608,10 @@ function renderHistory(rows, src) {
   const y = new Date().getFullYear();
   $('mYear').innerHTML = Array.from({ length: y - 1994 }, (_, i) => `<option>${y - i}</option>`).join('');
 })();
-$('mLoad').addEventListener('click', async () => {
+async function loadMonths() {
   const y = Number($('mYear').value);
   const m = $('mMsg');
-  m.textContent = 'Lade …'; m.className = 'msg'; $('mLoad').disabled = true;
+  m.textContent = 'Lade …'; m.className = 'msg';
   try {
     const { rows } = await loadSource($('mSrc').value, (y - 1) + '-01-01', y + '-12-31');
     if (!rows.length) throw new Error('Keine Daten für diese Jahre.');
@@ -642,8 +648,10 @@ $('mLoad').addEventListener('click', async () => {
     $('mResult').classList.remove('hidden');
   } catch (e) {
     m.textContent = 'Fehler: ' + e.message; m.className = 'msg err';
-  } finally { $('mLoad').disabled = false; }
-});
+  }
+}
+$('mSrc').addEventListener('change', loadMonths);
+$('mYear').addEventListener('change', loadMonths);
 
 // ── Stundenleiste: eine Spalte pro Stunde, Temperaturkurve darüber ──
 function renderHours(h, idx) {
@@ -656,6 +664,11 @@ function renderHours(h, idx) {
   const morgen = addDays(heute, 1);
   const tagName = d => d === heute ? 'Heute' : d === morgen ? 'Morgen' : TAGE[new Date(d + 'T12:00:00').getDay()] + ' ' + d.slice(8, 10) + '.' + d.slice(5, 7) + '.';
   const rMax = Math.max(1, ...idx.map(i => h.precipitation[i] || 0));
+  const regen = idx.some(i => (h.precipitation[i] || 0) >= 0.1);
+  const ppMax = Math.max(0, ...idx.map(i => h.precipitation_probability[i] || 0));
+  $('hoursHint').textContent = 'Zur Seite wischen für spätere Stunden. ' + (regen
+    ? 'Blau = Niederschlag in mm pro Stunde, darunter die Regenwahrscheinlichkeit.'
+    : ppMax < 10 ? 'In den nächsten 48 Stunden kein Regen erwartet.' : 'Kein messbarer Regen erwartet; unten die Regenwahrscheinlichkeit.');
   const warm = css('--warm'), ink = css('--ink'), grid = css('--grid'), axis = css('--axis');
   // Linien beim Tageswechsel im SVG
   const trenn = idx.map((i, k) => k > 0 && h.time[i].slice(11, 13) === '00' ? `<line x1="${k * W}" y1="0" x2="${k * W}" y2="${H}" stroke="${axis}"/>` : '').join('');
@@ -667,15 +680,14 @@ function renderHours(h, idx) {
   </svg>`;
   // Tagesnamen + Uhrzeit oben, dann Kurve, dann Symbole/Regen
   const kopf = idx.map((i, k) => { const t = h.time[i], std = t.slice(11, 13), neu = k === 0 || std === '00';
-    const kurz = ['06', '12', '18'].includes(std) ? `<span style="color:var(--muted);font-weight:500">${tagName(t.slice(0, 10)).split(' ')[0]}</span>` : '';
-    return `<div class="col${neu && k > 0 ? ' dsep' : ''}"><div class="dname">${neu ? tagName(t.slice(0, 10)) : kurz}</div><div class="time">${std} Uhr</div></div>`; }).join('');
+    return `<div class="col${neu && k > 0 ? ' dsep' : ''}"><div class="dname">${neu ? tagName(t.slice(0, 10)) : ''}</div><div class="time">${std} Uhr</div></div>`; }).join('');
   const unten = idx.map((i, k) => { const t = h.time[i], std = t.slice(11, 13), neu = std === '00' && k > 0;
     const r = h.precipitation[i] || 0, pp = h.precipitation_probability[i];
     return `<div class="col${neu ? ' dsep' : ''}">
       <div class="ico" title="${wText(h.weather_code[i])}">${wIcon(h.weather_code[i])}</div>
-      <div class="rainbox"><div class="rainbar" style="height:${r > 0 ? Math.max(3, r / rMax * 44) : 0}px"></div></div>
-      <div class="mm">${r >= 0.1 ? nf(r, 1) : '–'}</div>
-      <div class="pp">${pp != null ? nf(pp, 0) + ' %' : ''}</div></div>`; }).join('');
+      ${regen ? `<div class="rainbox"><div class="rainbar" style="height:${r > 0 ? Math.max(3, r / rMax * 44) : 0}px"></div></div>
+      <div class="mm">${r >= 0.1 ? nf(r, 1) : ''}</div>` : ''}
+      ${ppMax >= 10 ? `<div class="pp">${pp != null && pp > 0 ? nf(pp, 0) + ' %' : ''}</div>` : ''}</div>`; }).join('');
   $('hours').innerHTML = `<div class="track" style="--w:${W}px;width:${idx.length * W}px">
     <div class="cols">${kopf}</div>${svg}<div class="cols">${unten}</div></div>`;
 }
@@ -687,7 +699,7 @@ function drawChart(id, type, labels, series, unit, extra, opts = {}) {
   charts[id] = new Chart($(id), {
     type,
     data: { labels, datasets: series.map(s => ({
-      label: s.label || '', data: s.data, borderColor: type === 'bar' ? css('--surface') : s.color, backgroundColor: s.color,
+      label: s.label || '', data: s.data, borderColor: type === 'bar' ? css('--surface') : s.color, backgroundColor: s.colors || s.color,
       borderWidth: type === 'bar' ? { top: 2, right: 0, bottom: 0, left: 0 } : 2,
       pointRadius: 0, pointHoverRadius: 5, tension: 0.25,
       borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom',
@@ -734,15 +746,19 @@ function renderYears() {
     kpi('Ø pro Jahr', nf(avg, 0), 'mm', check && full === clean ? `${full.length} Jahre ohne fragliche Monate` : `${full[0]}–${full[full.length - 1]}`) +
     kpi('Nassestes Jahr', nf(J[wet].regen_summe, 0), 'mm', wet) +
     kpi('Trockenstes Jahr', nf(J[dry].regen_summe, 0), 'mm', dry) +
-    kpi('Messwerte bis', fmtDate(lcdLast()), '', 'wöchentlich aktualisiert');
+    kpi('Messwerte bis', fmtDate(lcdLast()), '', 'Station meldet monatlich');
   const A = agriIndex ? agriIndex.jahre : {};
+  // unvollständige Jahre blass zeichnen und mit * beschriften
+  const blass = c => ys.map(y => complete.includes(y) ? c : c + '55');
   const series = [
-    { label: 'Diekirch', data: ys.map(y => J[y].regen_summe), color: css('--rain') },
-    { label: 'Ettelbruck', data: ys.map(y => A[y] ? A[y].regen_summe : null), color: css('--agri') }
+    { label: 'Diekirch', data: ys.map(y => J[y].regen_summe), color: css('--rain'), colors: blass(css('--rain')) },
+    { label: 'Ettelbruck', data: ys.map(y => A[y] ? A[y].regen_summe : null), color: css('--agri'), colors: blass(css('--agri')) }
   ];
-  if (check) series.push({ label: 'Modell', data: ys.map(y => check.years[y] && check.years[y].mo ? Math.round(check.years[y].mo) : null), color: css('--prev') });
+  if (check) series.push({ label: 'Modell', data: ys.map(y => check.years[y] && check.years[y].mo ? Math.round(check.years[y].mo) : null), color: css('--prev'), colors: blass(css('--prev')) });
+  const offen = ys.filter(y => !complete.includes(y));
+  $('yHint').textContent = offen.length ? `Blass mit * = unvollständiges Jahr (${offen.map(y => `${y}: ${fmtDate(J[y].von)} – ${fmtDate(J[y].bis)}`).join(', ')}) – nicht mit ganzen Jahren vergleichbar.` : '';
   $('yLegM').classList.toggle('hidden', !check);
-  drawChart('cYears', 'bar', ys, series, 'mm', i => {
+  drawChart('cYears', 'bar', ys.map(y => complete.includes(y) ? y : y + '*'), series, 'mm', i => {
     const y = ys[i], t = [];
     if (!complete.includes(y)) t.push(`unvollständig: ${fmtDate(J[y].von)} – ${fmtDate(J[y].bis)}`);
     if (check && check.years[y] && check.years[y].n) t.push(`⚠ ${check.years[y].n} Monat(e) mit fraglicher Messung`);
@@ -827,6 +843,8 @@ async function loadPegel() {
   const f = { p10: pf('p10'), p30: pf('p30'), p50: pf('p50'), p70: pf('p70'), p90: pf('p90') };
   const hat = f.p50.length > 0;
   const ende = hat ? f.p50[f.p50.length - 1] : null;
+  const bandBreite = Math.max(0, ...f.p90.map((p, i) => p.y - (f.p10[i] ? f.p10[i].y : p.y)));
+  $('pegelLegBand').classList.toggle('hidden', !(hat && bandBreite >= 1));
 
   const age = minAlt(new Date(tL));
   let h = `<div class="st"><div class="n">Sauer bei Diekirch</div><div class="d">inondations.lu · Wasserstand, 15-min-Werte</div>
@@ -915,13 +933,14 @@ async function loadAll(force) {
     if (!force) preset('30');
   }
   await loadHistory();
-  if (force && !$('mResult').classList.contains('hidden')) $('mLoad').click();
+  await loadMonths();
   await fc;
   if (last) {
     try {
       await buildCheck();
       renderYears();
       if ($('src').value === 'station') await loadHistory();
+      if ($('mSrc').value === 'station') await loadMonths();
     } catch (e) { console.warn('Abgleich nicht möglich:', e); }
   }
 }
@@ -930,6 +949,11 @@ $('refresh').addEventListener('click', async () => {
   b.disabled = true; b.classList.add('busy'); b.innerHTML = '↻<span class="lbl"> Lädt …</span>';
   try { await loadAll(true); } finally { b.disabled = false; b.classList.remove('busy'); b.innerHTML = '↻<span class="lbl"> Aktualisieren</span>'; }
 });
+// Admin-Link nur mit ?admin in der Adresse (wird gemerkt)
+try {
+  if (/[?&]admin\b/.test(location.search)) localStorage.setItem('wetterAdmin', '1');
+  if (localStorage.getItem('wetterAdmin') === '1') $('adminLink').classList.remove('hidden');
+} catch (e) { if (/[?&]admin\b/.test(location.search)) $('adminLink').classList.remove('hidden'); }
 loadAll(false);
 </script>
 </body>
