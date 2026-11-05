@@ -1,1 +1,1 @@
-{"quelle":"Eigene Wetterstation (ESP32 + BME280 + Misol-Regenmesser)","spalten":["zeit_utc","temp","feuchte","druck","regen_mm"],"werte":[["2026-11-05T12:45Z",18.5,52.8,1002.0,0.0],["2026-11-05T12:55Z",17.5,51.4,1001.8,0.7]]}
+{"quelle":"Eigene Wetterstation (ESP32 + BME280 + Misol-Regenmesser)","spalten":["zeit_utc","temp","feuchte","druck","regen_mm"],"werte":[["2026-11-05T12:45Z",18.5,52.8,1002.0,0.0],["2026-11-05T12:55Z",17.5,51.4,1001.8,0.7],["2026-11-05T13:05Z",17.4,52.0,1001.8,0.7]]}
